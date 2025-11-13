@@ -1,47 +1,69 @@
-export default async (request, context) => {
+export default async (request) => {
   try {
     const targetOrigin = "https://lcs2.pythonanywhere.com";
-    const url = new URL(request.url);
+    const reqUrl = new URL(request.url);
 
-    // Build final target URL
-    const targetUrl = targetOrigin + url.pathname + url.search;
+    // Build the forwarded URL
+    const targetUrl = new URL(
+      reqUrl.pathname + reqUrl.search,
+      targetOrigin
+    ).toString();
 
-    // Prepare request for origin
     const init = {
       method: request.method,
       headers: {
         ...Object.fromEntries(request.headers),
-        "Host": "lcs2.pythonanywhere.com"
+        "Host": "lcs2.pythonanywhere.com",
       },
       body:
         request.method === "GET" || request.method === "HEAD"
-        ? undefined
-        : request.body,
-      redirect: "manual" // <- IMPORTANT FIX
+          ? undefined
+          : await request.arrayBuffer(),
+      redirect: "manual"
     };
 
     let response = await fetch(targetUrl, init);
 
-    // 🔥 Handle 301/302 redirect manually to avoid body replay crash
+    // -----------------------
+    //  FIX FLASK REDIRECTS
+    // -----------------------
     if ([301, 302, 303].includes(response.status)) {
-      const loc = response.headers.get("Location");
+      let loc = response.headers.get("Location") || "";
 
-      // Follow redirect with GET (browser behavior)
-      response = await fetch(loc.startsWith("http") ? loc : targetOrigin + loc, {
-        method: "GET",
-        headers: {
-          ...Object.fromEntries(request.headers),
-          "Host": "lcs2.pythonanywhere.com"
-        },
-        redirect: "manual"
-      });
+      // Absolute redirect → convert to relative
+      if (loc.startsWith(targetOrigin)) {
+        loc = loc.replace(targetOrigin, "");
+      }
+
+      // Relative redirect → keep it
+      if (loc.startsWith("/")) {
+        return Response.redirect(loc, response.status);
+      }
+
+      // Unhandled → fallback
+      return new Response("Redirect blocked", { status: 500 });
+    }
+
+    // -----------------------
+    //  FIX ABSOLUTE STATIC URLS
+    // -----------------------
+    const headers = new Headers(response.headers);
+
+    // Remove HSTS to avoid HTTPS forcing issues
+    headers.delete("Strict-Transport-Security");
+
+    // Fix content location for browsers
+    if (headers.get("Location")?.startsWith(targetOrigin)) {
+      headers.set(
+        "Location",
+        headers.get("Location").replace(targetOrigin, "")
+      );
     }
 
     return new Response(response.body, {
       status: response.status,
-      headers: response.headers
+      headers
     });
-
   } catch (err) {
     return new Response("Proxy error: " + err.message, { status: 500 });
   }
