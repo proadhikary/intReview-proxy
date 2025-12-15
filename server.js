@@ -1,16 +1,15 @@
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const cookieParser = require("cookie-parser");
-// IMPORT DNS MODULE
-const dns = require('node:dns');
+const dns = require("node:dns"); // Import DNS module
 
-// FORCE IPV4 FIRST
-dns.setDefaultResultOrder('ipv4first');
+// FIX: Force Node.js to use IPv4 first (Solves ECONNREFUSED on Node 17+)
+dns.setDefaultResultOrder("ipv4first");
 
 const app = express();
 app.use(cookieParser());
 
-// Fix trusted proxies
+// Fix trusted proxies (important for Flask sessions)
 app.set("trust proxy", true);
 
 // Proxy settings
@@ -18,28 +17,38 @@ const proxy = createProxyMiddleware({
   target: "https://lcs2.pythonanywhere.com",
   changeOrigin: true,
   secure: true, 
+  
+  // connection header override can sometimes help with pythonanywhere
+  headers: {
+    Connection: 'keep-alive'
+  },
 
-  // Allow websockets, POST, cookies, admin routes
   onProxyReq: (proxyReq, req, res) => {
     // Forward real IP
     proxyReq.setHeader("X-Forwarded-For", req.ip);
     proxyReq.setHeader("X-Forwarded-Proto", "https");
 
     // Ensure Host header matches PythonAnywhere
+    // Note: changeOrigin: true usually does this, but explicit setting is safe
     proxyReq.setHeader("Host", "lcs2.pythonanywhere.com");
   },
 
   onProxyRes: (proxyRes, req, res) => {
-    // Fix cookies from PythonAnywhere → your domain
+    // Fix cookies from PythonAnywhere -> your domain
     const cookies = proxyRes.headers["set-cookie"];
     if (cookies) {
       const fixed = cookies.map((c) =>
         c
           .replace(/Domain=[^;]+/i, "Domain=review.lcs2.in") // rewrite domain
-          .replace(/; Secure/gi, "") // allow HTTP behind proxy
+          .replace(/; Secure/gi, "") // allow HTTP behind proxy if needed
       );
       proxyRes.headers["set-cookie"] = fixed;
     }
+  },
+
+  onError: (err, req, res) => {
+    console.error('Proxy Error:', err);
+    res.status(500).send('Proxy Error: ' + err.message);
   },
 
   logLevel: "debug"
