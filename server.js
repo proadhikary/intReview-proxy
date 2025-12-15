@@ -1,18 +1,23 @@
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const cookieParser = require("cookie-parser");
+// IMPORT DNS MODULE
+const dns = require('node:dns');
+
+// FORCE IPV4 FIRST
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 app.use(cookieParser());
 
-// Fix trusted proxies (important for Flask sessions)
+// Fix trusted proxies
 app.set("trust proxy", true);
 
 // Proxy settings
 const proxy = createProxyMiddleware({
   target: "https://lcs2.pythonanywhere.com",
   changeOrigin: true,
-  secure: true,
+  secure: true, 
 
   // Allow websockets, POST, cookies, admin routes
   onProxyReq: (proxyReq, req, res) => {
