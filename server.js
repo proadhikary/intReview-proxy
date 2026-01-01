@@ -21,7 +21,7 @@ const proxy = createProxyMiddleware({
     proxyReq.setHeader("X-Forwarded-Proto", "https");
 
     // Ensure Host header matches PythonAnywhere
-    proxyReq.setHeader("Host", "lcs2.pythonanywhere.com");
+    proxyReq.setHeader("Host", "lcs2.pythonanywhere.com/login?next=%2F");
   },
 
   onProxyRes: (proxyRes, req, res) => {
