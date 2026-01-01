@@ -10,7 +10,7 @@ app.set("trust proxy", true);
 
 // Proxy settings
 const proxy = createProxyMiddleware({
-  target: "https://lcs2.pythonanywhere.com",
+  target: "https://lcs2.pythonanywhere.com/login?next=%2F",
   changeOrigin: true,
   secure: true,
 
