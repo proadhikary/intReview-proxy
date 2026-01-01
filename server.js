@@ -40,7 +40,7 @@ app.set("trust proxy", true);
 // });
 
 const proxy = createProxyMiddleware({
-  target: "http://lcs2.pythonanywhere.com", // ❗ HTTP not HTTPS
+  target: "http://proadhikary.pythonanywhere.com", // ❗ HTTP not HTTPS
   changeOrigin: true,
   secure: false, // ❗ required
   ws: true,
