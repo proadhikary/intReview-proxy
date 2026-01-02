@@ -10,7 +10,7 @@ app.set("trust proxy", true);
 
 // Proxy settings
 const proxy = createProxyMiddleware({
-  target: "https://lcs2.pythonanywhere.com/login?next=%2F",
+  target: "https://lcs2.pythonanywhere.com/",
   changeOrigin: true,
   secure: true,
 
@@ -21,7 +21,7 @@ const proxy = createProxyMiddleware({
     proxyReq.setHeader("X-Forwarded-Proto", "https");
 
     // Ensure Host header matches PythonAnywhere
-    proxyReq.setHeader("Host", "lcs2.pythonanywhere.com/login?next=%2F");
+    proxyReq.setHeader("Host", "lcs2.pythonanywhere.com");
   },
 
   onProxyRes: (proxyRes, req, res) => {
